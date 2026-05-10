@@ -10,47 +10,94 @@ import org.springframework.ws.server.endpoint.annotation.ResponsePayload;
 import com.example.bank.service.BankService;
 import com.example.bank.service.BankService.Account;
 import com.example.bank.service.UnknownAccountException;
+
 import com.example.bank.ws.AccountType;
 import com.example.bank.ws.DepositRequest;
 import com.example.bank.ws.DepositResponse;
 import com.example.bank.ws.GetAccountRequest;
 import com.example.bank.ws.GetAccountResponse;
+import com.example.bank.ws.WithdrawRequest;
+import com.example.bank.ws.WithdrawResponse;
 
 @Endpoint
 public class BankEndpoint {
 
-  private static final String NAMESPACE_URI = "http://example.com/bank";
-  private final BankService bankService;
+    private static final String NAMESPACE_URI = "http://example.com/bank";
 
-  public BankEndpoint(BankService bankService) {
-    this.bankService = bankService;
-  }
+    private final BankService bankService;
 
-  @PayloadRoot(namespace = NAMESPACE_URI, localPart = "GetAccountRequest")
-  @ResponsePayload
-  public GetAccountResponse getAccount(@RequestPayload GetAccountRequest request) {
-    Account acc = bankService.getAccount(request.getAccountId());
-    if (acc == null) {
-      throw new UnknownAccountException("Unknown accountId: " + request.getAccountId());
+    public BankEndpoint(BankService bankService) {
+        this.bankService = bankService;
     }
 
-    AccountType dto = new AccountType();
-    dto.setAccountId(acc.accountId);
-    dto.setOwner(acc.owner);
-    dto.setBalance(acc.balance);
-    dto.setCurrency(acc.currency);
+    // =========================
+    // GetAccount
+    // =========================
+    @PayloadRoot(namespace = NAMESPACE_URI, localPart = "GetAccountRequest")
+    @ResponsePayload
+    public GetAccountResponse getAccount(
+            @RequestPayload GetAccountRequest request) {
 
-    GetAccountResponse resp = new GetAccountResponse();
-    resp.setAccount(dto);
-    return resp;
-  }
+        Account acc = bankService.getAccount(request.getAccountId());
 
-  @PayloadRoot(namespace = NAMESPACE_URI, localPart = "DepositRequest")
-  @ResponsePayload
-  public DepositResponse deposit(@RequestPayload DepositRequest request) {
-    BigDecimal newBalance = bankService.deposit(request.getAccountId(), request.getAmount());
-    DepositResponse resp = new DepositResponse();
-    resp.setNewBalance(newBalance);
-    return resp;
-  }
+        if (acc == null) {
+            throw new UnknownAccountException(
+                    "Unknown accountId: " + request.getAccountId());
+        }
+
+        AccountType dto = new AccountType();
+
+        dto.setAccountId(acc.accountId);
+        dto.setOwner(acc.owner);
+        dto.setBalance(acc.balance);
+        dto.setCurrency(acc.currency);
+
+        GetAccountResponse response = new GetAccountResponse();
+        response.setAccount(dto);
+
+        return response;
+    }
+
+    // =========================
+    // Deposit
+    // =========================
+    @PayloadRoot(namespace = NAMESPACE_URI, localPart = "DepositRequest")
+    @ResponsePayload
+    public DepositResponse deposit(
+            @RequestPayload DepositRequest request) {
+
+        BigDecimal newBalance =
+                bankService.deposit(
+                        request.getAccountId(),
+                        request.getAmount());
+
+        DepositResponse response = new DepositResponse();
+        response.setNewBalance(newBalance);
+
+        return response;
+    }
+
+    // =========================
+    // Withdraw
+    // =========================
+    @PayloadRoot(namespace = NAMESPACE_URI, localPart = "WithdrawRequest")
+    @ResponsePayload
+    public WithdrawResponse withdraw(
+            @RequestPayload WithdrawRequest request) {
+
+        Account acc = bankService.getAccount(request.getAccountId());
+
+        if (acc == null) {
+            throw new UnknownAccountException(
+                    "Unknown accountId: " + request.getAccountId());
+        }
+
+        BigDecimal newBalance =
+                acc.balance.subtract(request.getAmount());
+
+        WithdrawResponse response = new WithdrawResponse();
+        response.setNewBalance(newBalance);
+
+        return response;
+    }
 }
